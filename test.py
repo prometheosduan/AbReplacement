@@ -8,6 +8,7 @@ import requests
 monkey.patch_all()
 
 _stats = []
+_VERBS = ['GET', 'POST', 'DELETE', 'PUT', 'HEAD', ]
 
 
 def clear_stats():
@@ -22,10 +23,11 @@ def print_stats():
     print('Slowest          \t\t%.4f' % max(_stats))
 
 
-def onecall(url):
+def onecall(url, method):
+    method = getattr(requests, method.lower())
     start = time.time()
     try:
-        requests.get(url)
+        method(url)
     finally:
         _stats.append(time.time() - start)
 
@@ -34,17 +36,18 @@ def onecall(url):
     # sys.stdout.flush()
 
 
-def run(url, num, method='GET'):
-    # need to be changed to num/concurrency
+def run(url, num, method):
+    # todo need to be changed to num/concurrency
     for i in range(num):
-        onecall(url)
+        onecall(url, method)
 
 
-def load(url, requests, concurrency):
+def load(url, requests, concurrency, method):
     clear_stats()
     sys.stdout.write('Starting the load [')
     try:
-        jobs = [gevent.spawn(run, url, requests) for i in range(concurrency)]
+        jobs = [gevent.spawn(run, url, requests, method) for i in
+                range(concurrency)]
         print jobs
         gevent.joinall(jobs)
         print jobs
@@ -55,20 +58,25 @@ def load(url, requests, concurrency):
 
 
 def main():
+    # todo -a AUTH, --auth AUTH
     parser = argparse.ArgumentParser(description='AB For Humans.')
 
     parser.add_argument('-n', '--requests', help='Number of requests',
                         default=1,
                         type=int)
 
+    parser.add_argument('-m', '--method', help='Concurrency',
+                        type=str, default='GET', choices=_VERBS)
+
     parser.add_argument('-c', '--concurrency', help='Concurrency', default=1,
                         type=int)
+
     parser.add_argument('url', help='URL to hit')
 
     args = parser.parse_args()
     print args
     try:
-        load(args.url, args.requests, args.concurrency)
+        load(args.url, args.requests, args.concurrency, args.method)
     except KeyboardInterrupt:
         sys.exit(0)
 
