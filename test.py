@@ -1,9 +1,9 @@
 import argparse
 import sys
 from gevent import monkey
-import gevent
 import time
 import requests
+from gevent.pool import Pool
 
 monkey.patch_all()
 
@@ -15,9 +15,10 @@ def clear_stats():
     _stats[:] = []
 
 
-def print_stats():
+def print_stats(total):
     print('')
     print('Successful calls\t\t%r' % len(_stats))
+    print('Total time       \t\t%.4f s' % total)
     print('Average          \t\t%.4f' % (sum(_stats) / len(_stats)))
     print('Fastest          \t\t%.4f' % min(_stats))
     print('Slowest          \t\t%.4f' % max(_stats))
@@ -31,34 +32,37 @@ def onecall(url, method):
     finally:
         _stats.append(time.time() - start)
 
-    print _stats
     sys.stdout.write('=')
-    # sys.stdout.flush()
+    sys.stdout.flush()
 
 
-def run(url, num, method):
-    # todo need to be changed to num/concurrency
+def run(url, num, method, concurrency):
+    '''
+    Maintain a group of greenlets that are still running with the maximum
+    amount of active ones that will be allowed
+    '''
+    pool = Pool(concurrency)
     for i in range(num):
-        onecall(url, method)
+        '''
+        Begin a new greenlet & add it to the collection
+        of greenlets this group is monitoring
+        '''
+        pool.spawn(onecall, url, method)
+    # Wait for this group to become empty at least once
+    pool.join()
 
 
 def load(url, requests, concurrency, method):
     clear_stats()
     sys.stdout.write('Starting the load [')
     try:
-        jobs = [gevent.spawn(run, url, requests, method) for i in
-                range(concurrency)]
-        print jobs
-        gevent.joinall(jobs)
-        print jobs
+        run(url, requests, method, concurrency)
     finally:
         print('] Done')
 
-    print_stats()
 
 
 def main():
-    # todo -a AUTH, --auth AUTH
     parser = argparse.ArgumentParser(description='AB For Humans.')
 
     parser.add_argument('-n', '--requests', help='Number of requests',
@@ -75,10 +79,15 @@ def main():
 
     args = parser.parse_args()
     print args
+
+    start = time.time()
     try:
         load(args.url, args.requests, args.concurrency, args.method)
     except KeyboardInterrupt:
         sys.exit(0)
+    finally:
+        total = time.time() - start
+        print_stats(total)
 
 
 if __name__ == '__main__':
