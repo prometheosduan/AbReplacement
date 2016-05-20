@@ -1,7 +1,7 @@
 # AbReplacement
 a wheel inspired by tarekziade/boom
 
-Quickstart:
+Quickstart:/n
 $ python test.py -n 100 -c 25 -m POST 'https://www.google.com'
 
 Namespace(concurrency=25, method='POST', requests=100, url='https://www.google.com')
