@@ -1,6 +1,12 @@
 # AbReplacement<br />
 a wheel inspired by tarekziade/boom<br />
 <br />
+Installation:<br />
+pip install gevent<br />
+pip install requests<br />
+or simply:<br />
+pip install boom<br />
+<br />
 Quickstart:<br />
 $ python test.py -n 100 -c 25 -m POST 'https://www.google.com'<br />
 
